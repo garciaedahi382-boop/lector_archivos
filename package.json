@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "run:example": "bun run src/scripts/example.ts"
+    "run:example": "bun run src/scripts/example.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.12",
     "adm-zip": "^0.6.1"
+  },
+  "devDependencies": {
+    "exceljs": "^4.4.0",
+    "pptxgenjs": "^4.0.1"
   }
 }
