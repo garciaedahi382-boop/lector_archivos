@@ -1,10 +1,12 @@
 import { DOMParser } from '@xmldom/xmldom';
+import { FORMAT_CONFIG } from '../constants/formats';
 import { OUTPUT_CONFIG } from '../constants/output';
 
-const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+/** Namespace XML usado cuando el helper no recibe uno explícito (Word). */
+const DEFAULT_NS = FORMAT_CONFIG.namespaces.word;
 
 /**
- * Resultado de leer un documento.
+ * Resultado de leer un documento (DOCX de pdf2docx, PPTX o XLSX).
  */
 export interface PdfReadResult {
   /** Párrafos en el orden del documento. */
@@ -23,45 +25,61 @@ export interface PdfReadResult {
 export interface ParseDocxOptions {
   /** Si es `true`, las tablas se extraen y sus párrafos se omiten del texto. */
   readTables?: boolean;
+  /** Namespace XML a leer (Word por defecto; DrawingML para PPTX). */
+  namespace?: string;
 }
 
 /**
- * Helper de parseo de XML OOXML con estructura Word (`t`, `p`, `tbl`, `tr`, `tc`).
+ * Helper de parseo de XML OOXML con estructura Word/DrawingML
+ * (`t`, `p`, `tbl`, `tr`, `tc`).
  *
- * Todos sus métodos son estáticos porque no mantiene estado.
+ * Todos sus métodos son estáticos porque no mantiene estado; el namespace es
+ * un parámetro para poder reutilizarlo con PPTX.
  */
 export class DocumentXmlHelper {
   /**
+   * Parsea una cadena XML.
+   * @param xmlStr Contenido XML.
+   * @returns Documento DOM.
+   */
+  static parseXml(xmlStr: string): Document {
+    return new DOMParser().parseFromString(xmlStr, 'text/xml');
+  }
+
+  /**
    * Concatena el texto (`t`) contenido en un elemento.
    * @param el Elemento contenedor (párrafo, celda, etc.).
+   * @param namespace Namespace XML a consultar.
    * @returns Texto plano del elemento.
    */
-  static findText(el: Element): string {
-    const children = el.getElementsByTagNameNS(NS, 't');
+  static findText(el: Element, namespace: string = DEFAULT_NS): string {
+    const children = el.getElementsByTagNameNS(namespace, 't');
     return Array.from(children).map(c => c.textContent || '').join('');
   }
 
   /**
    * Indica si el párrafo pertenece a una lista numerada/vinada (`numPr`/`ilvl`).
    * @param el Párrafo (`p`).
+   * @param namespace Namespace XML a consultar.
    */
-  static isListItem(el: Element): boolean {
-    const numPr = el.getElementsByTagNameNS(NS, 'numPr')[0];
+  static isListItem(el: Element, namespace: string = DEFAULT_NS): boolean {
+    const numPr = el.getElementsByTagNameNS(namespace, 'numPr')[0];
     if (!numPr) return false;
-    return numPr.getElementsByTagNameNS(NS, 'ilvl').length > 0;
+    return numPr.getElementsByTagNameNS(namespace, 'ilvl').length > 0;
   }
 
   /**
    * Obtiene el texto del primer párrafo del cuerpo, usado como título.
    * @param doc Documento DOM.
+   * @param namespace Namespace XML a consultar.
    * @returns Título o `null` si no hay párrafos con texto.
    */
-  static getFirstParagraphTitle(doc: Document): string | null {
-    const body = doc.getElementsByTagNameNS(NS, 'body')[0];
+  static getFirstParagraphTitle(doc: Document, namespace: string = DEFAULT_NS): string | null {
+    const body = doc.getElementsByTagNameNS(namespace, 'body')[0];
     if (!body) return null;
-    const firstP = body.getElementsByTagNameNS(NS, 'p')[0];
+    const firstP = body.getElementsByTagNameNS(namespace, 'p')[0];
     if (!firstP) return null;
-    return this.findText(firstP).trim() || null;
+    return this.findText(firstP, namespace).trim() || null;
   }
 
   /**
@@ -80,12 +98,13 @@ export class DocumentXmlHelper {
   /**
    * Extrae una fila de tabla uniendo sus celdas no vacías.
    * @param row Fila (`tr`).
+   * @param namespace Namespace XML a consultar.
    * @returns Celdas unidas por `OUTPUT_CONFIG.tableCellSeparator`.
    */
-  static extractTableRow(row: Element): string {
-    const cells = Array.from(row.getElementsByTagNameNS(NS, 'tc'));
+  static extractTableRow(row: Element, namespace: string = DEFAULT_NS): string {
+    const cells = Array.from(row.getElementsByTagNameNS(namespace, 'tc'));
     return cells
-      .map(cell => this.findText(cell).trim())
+      .map(cell => this.findText(cell, namespace).trim())
       .filter(text => text.length > 0)
       .join(OUTPUT_CONFIG.tableCellSeparator);
   }
@@ -93,15 +112,16 @@ export class DocumentXmlHelper {
   /**
    * Extrae todas las tablas del documento.
    * @param doc Documento DOM.
+   * @param namespace Namespace XML a consultar.
    * @returns Tablas, cada una como lista de filas; las filas vacías se omiten.
    */
-  static extractTables(doc: Document): string[][] {
+  static extractTables(doc: Document, namespace: string = DEFAULT_NS): string[][] {
     const tables: string[][] = [];
-    const items = Array.from(doc.getElementsByTagNameNS(NS, 'tbl'));
+    const items = Array.from(doc.getElementsByTagNameNS(namespace, 'tbl'));
 
     for (const table of items) {
-      const rows = Array.from(table.getElementsByTagNameNS(NS, 'tr'))
-        .map(row => this.extractTableRow(row))
+      const rows = Array.from(table.getElementsByTagNameNS(namespace, 'tr'))
+        .map(row => this.extractTableRow(row, namespace))
         .filter(row => row.length > 0);
 
       if (rows.length > 0) tables.push(rows);
@@ -113,7 +133,7 @@ export class DocumentXmlHelper {
   /**
    * Recorre los párrafos del documento separando texto de listas.
    * @param doc Documento DOM.
-   * @param options Opciones de parseo (lectura de tablas).
+   * @param options Opciones de parseo (namespace y lectura de tablas).
    * @returns Párrafos sueltos y listas agrupadas.
    */
   static extractDocumentItems(doc: Document, options: ParseDocxOptions = {}): { paragraphs: string[]; lists: string[][] } {
@@ -121,14 +141,15 @@ export class DocumentXmlHelper {
     const lists: string[][] = [];
     let currentList: string[] = [];
 
-    const items = Array.from(doc.getElementsByTagNameNS(NS, 'p'));
+    const namespace = options.namespace ?? DEFAULT_NS;
+    const items = Array.from(doc.getElementsByTagNameNS(namespace, 'p'));
 
     for (const item of items) {
       if (options.readTables && this.isInsideTable(item)) continue;
-      const text = this.findText(item);
+      const text = this.findText(item, namespace);
       if (!text.trim()) continue;
 
-      if (this.isListItem(item)) {
+      if (this.isListItem(item, namespace)) {
         currentList.push(text.trim());
       } else {
         if (currentList.length > 0) {
@@ -146,16 +167,17 @@ export class DocumentXmlHelper {
 
   /**
    * Parsea el XML de un documento completo (párrafos, listas, título y tablas).
-   * @param xmlStr Contenido de `word/document.xml`.
-   * @param options Opciones de parseo (lectura de tablas).
+   * @param xmlStr Contenido de `word/document.xml` o de una diapositiva.
+   * @param options Opciones de parseo (namespace y lectura de tablas).
    * @returns Resultado listo para `ResultFileWriter`.
    */
   static parseDocxXml(xmlStr: string, options: ParseDocxOptions = {}): PdfReadResult {
-    const doc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+    const doc = this.parseXml(xmlStr);
+    const namespace = options.namespace ?? DEFAULT_NS;
     const items = this.extractDocumentItems(doc, options);
-    const result: PdfReadResult = options.readTables ? { ...items, tables: this.extractTables(doc) } : items;
+    const result: PdfReadResult = options.readTables ? { ...items, tables: this.extractTables(doc, namespace) } : items;
 
-    const title = this.getFirstParagraphTitle(doc);
+    const title = this.getFirstParagraphTitle(doc, namespace);
     if (title) result.title = title;
 
     return result;

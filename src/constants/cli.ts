@@ -12,7 +12,7 @@ export const CLI_CONFIG = {
   helpText: [
     'Uso: lector_archivos <archivo> [opciones]',
     '',
-    'Archivos soportados: .pdf',
+    'Archivos soportados: .pdf, .pptx',
     'Lee el archivo y guarda el resultado en ~/.secti_addons/resultados.txt',
     '',
     'Opciones:',
