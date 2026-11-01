@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { PdfReaderBuilder, PptxReaderBuilder } from './src';
+import { PdfReaderBuilder, PptxReaderBuilder, XlsxReaderBuilder } from './src';
 import { EmbeddedPython } from './src/builder/embedded-python';
 import { CLI_CONFIG } from './src/constants/cli';
 import { FORMAT_CONFIG } from './src/constants/formats';
@@ -11,8 +11,8 @@ import pythonBundle from './dist/python-bundle.zip' with { type: 'file' };
  *
  * Uso: `lector_archivos <archivo> [-t|--tablas]`
  *
- * Despacha por extensión: `.pdf` (conversión con Python embebido) y `.pptx`
- * (lectura directa del zip OOXML). El resultado se guarda siempre en
+ * Despacha por extensión: `.pdf` (conversión con Python embebido), `.pptx` y
+ * `.xlsx` (lectura directa del zip OOXML). El resultado se guarda siempre en
  * `~/.secti_addons/resultados.txt` a través de `ResultFileWriter`.
  */
 
@@ -38,6 +38,8 @@ if (extension === FORMAT_CONFIG.extensions.pdf) {
   }).execute();
 } else if (extension === FORMAT_CONFIG.extensions.pptx) {
   await new PptxReaderBuilder({ inputFile, readTables }).execute();
+} else if (extension === FORMAT_CONFIG.extensions.xlsx) {
+  await new XlsxReaderBuilder({ inputFile, readTables }).execute();
 } else {
   console.error(`${CLI_CONFIG.unsupportedFormatMessage}: ${extension || inputFile}`);
   process.exit(1);

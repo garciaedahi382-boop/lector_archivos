@@ -1,7 +1,7 @@
 /**
  * API pública del lector de archivos.
  *
- * Expone los runners/builders (PDF, PPTX), sus tipos de resultado y de
+ * Expone los runners/builders (PDF, PPTX, XLSX), sus tipos de resultado y de
  * opciones, y las constantes de configuración reutilizables.
  */
 
@@ -17,6 +17,10 @@ export type { PdfReadResult, PdfReaderOptions } from './builder/pdf-reader-build
 export { PptxReaderBuilder } from './builder/pptx-reader-builder';
 /** Opciones de `PptxReaderBuilder`. */
 export type { PptxReaderOptions } from './builder/pptx-reader-builder';
+/** Builder de lectura de XLSX (zip + SpreadsheetML, sin Python). */
+export { XlsxReaderBuilder } from './builder/xlsx-reader-builder';
+/** Opciones de `XlsxReaderBuilder`. */
+export type { XlsxReaderOptions } from './builder/xlsx-reader-builder';
 /** Formatos soportados, namespaces OOXML y rutas internas. */
 export { FORMAT_CONFIG } from './constants/formats';
 /** Configuración por defecto del Python embebido. */
