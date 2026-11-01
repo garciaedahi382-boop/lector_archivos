@@ -1,5 +1,8 @@
 import { PYTHON_CONFIG } from '../config/default';
 
+/**
+ * Resultado de ejecutar un proceso Python.
+ */
 export interface ExecutionResult {
   exitCode: number | null;
   stdout: string;
@@ -7,6 +10,9 @@ export interface ExecutionResult {
   durationMs: number;
 }
 
+/**
+ * Opciones acumulables por `PythonRunner` (builder).
+ */
 export interface BuilderOptions {
   binary?: string;
   scriptPath?: string;
@@ -19,48 +25,71 @@ export interface BuilderOptions {
   encoding?: BufferEncoding;
 }
 
+/**
+ * Builder que envuelve la ejecución de un proceso Python.
+ *
+ * Admite script, código inline (`-c`) o módulo (`-m`), y devuelve
+ * `exitCode`, `stdout`, `stderr` y la duración.
+ *
+ * @example
+ * const { stdout } = await new PythonRunner({ binary })
+ *   .withCode('print("hola")')
+ *   .execute();
+ */
 export class PythonRunner {
   private options: BuilderOptions = {};
 
+  /** @param options Opciones iniciales (se copian, no se mutan). */
   constructor(options?: Partial<BuilderOptions>) {
     this.options = { ...options };
   }
 
+  /** Ejecuta un archivo `.py`. @param path Ruta del script. */
   withScript(path: string): this {
     this.options.scriptPath = path;
     return this;
   }
 
+  /** Ejecuta código inline con `-c`. @param code Código Python. */
   withCode(code: string): this {
     this.options.code = code;
     return this;
   }
 
+  /** Ejecuta un módulo con `-m`. @param name Nombre del módulo. */
   withModule(name: string): this {
     this.options.module = name;
     return this;
   }
 
+  /** @param ms Tiempo máximo de ejecución (0 o menos = sin límite). */
   withTimeout(ms: number): this {
     this.options.timeout = ms;
     return this;
   }
 
+  /** @param cwd Directorio de trabajo del proceso. */
   withCwd(cwd: string): this {
     this.options.cwd = cwd;
     return this;
   }
 
+  /** @param env Variables de entorno adicionales a las heredadas. */
   withEnv(env: Record<string, string>): this {
     this.options.env = { ...this.options.env, ...env };
     return this;
   }
 
+  /** @param flag Bandera extra para la línea de comandos. */
   addFlag(flag: string): this {
     this.options.flags = [...(this.options.flags ?? []), flag];
     return this;
   }
 
+  /**
+   * Resuelve el binario a usar (`binary`, `'auto'` o `PYTHON_CONFIG.binaryPath`).
+   * @returns Ruta o nombre del binario de Python.
+   */
   private resolveBinary(): string {
     const binary = this.options.binary ?? PYTHON_CONFIG.binaryPath;
 
@@ -77,6 +106,11 @@ export class PythonRunner {
     return binary;
   }
 
+  /**
+   * Arma `argv` según script, código o módulo configurado.
+   * @param binary Binario de Python ya resuelto.
+   * @returns Argumentos del proceso.
+   */
   private buildCommand(binary: string): string[] {
     const flags = [...PYTHON_CONFIG.defaultFlags, ...(this.options.flags ?? [])];
 
@@ -92,6 +126,12 @@ export class PythonRunner {
     throw new Error('Debes especificar un script (.withScript()) o código (.withCode())');
   }
 
+  /**
+   * Construye el entorno del proceso; para binarios embebidos define
+   * `PYTHONHOME`/`PYTHONPATH` si no venían definidos.
+   * @param binary Binario de Python ya resuelto.
+   * @returns Variables de entorno.
+   */
   private buildEnv(binary: string): Record<string, string> {
     const env: Record<string, string> = {};
 
@@ -112,6 +152,10 @@ export class PythonRunner {
     return env;
   }
 
+  /**
+   * Ejecuta el proceso Python y captura su salida.
+   * @returns Código de salida, `stdout`, `stderr` y duración en milisegundos.
+   */
   async execute(): Promise<ExecutionResult> {
     const startTime = performance.now();
     const binary = this.resolveBinary();
