@@ -13,6 +13,10 @@ export type { ExecutionResult, BuilderOptions } from './builder/python-runner';
 export { PdfReaderBuilder } from './builder/pdf-reader-builder';
 /** Tipo de resultado y opciones de `PdfReaderBuilder`. */
 export type { PdfReadResult, PdfReaderOptions } from './builder/pdf-reader-builder';
+/** Builder de lectura de DOCX (zip + WordprocessingML, sin Python). */
+export { DocxReaderBuilder } from './builder/docx-reader-builder';
+/** Opciones de `DocxReaderBuilder`. */
+export type { DocxReaderOptions } from './builder/docx-reader-builder';
 /** Builder de lectura de PPTX (zip + DrawingML, sin Python). */
 export { PptxReaderBuilder } from './builder/pptx-reader-builder';
 /** Opciones de `PptxReaderBuilder`. */

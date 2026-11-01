@@ -5,6 +5,7 @@ export const FORMAT_CONFIG = {
   /** Extensiones reconocidas por el CLI (siempre en minúsculas). */
   extensions: {
     pdf: '.pdf',
+    docx: '.docx',
     pptx: '.pptx',
     xlsx: '.xlsx',
   },
@@ -20,6 +21,11 @@ export const FORMAT_CONFIG = {
     officeRelationships: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
     /** Relaciones del paquete (`workbook.xml.rels`). */
     packageRelationships: 'http://schemas.openxmlformats.org/package/2006/relationships',
+  },
+  /** Rutas internas de un `.docx`. */
+  docx: {
+    /** XML con el cuerpo del documento (párrafos, listas y tablas). */
+    documentPath: 'word/document.xml',
   },
   /** Rutas y patrones internos de un `.pptx`. */
   pptx: {

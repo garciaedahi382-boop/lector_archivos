@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { PdfReaderBuilder, PptxReaderBuilder, XlsxReaderBuilder } from './src';
+import { DocxReaderBuilder, PdfReaderBuilder, PptxReaderBuilder, XlsxReaderBuilder } from './src';
 import { EmbeddedPython } from './src/builder/embedded-python';
 import { CLI_CONFIG } from './src/constants/cli';
 import { FORMAT_CONFIG } from './src/constants/formats';
@@ -11,9 +11,9 @@ import pythonBundle from './dist/python-bundle.zip' with { type: 'file' };
  *
  * Uso: `lector_archivos <archivo> [-t|--tablas]`
  *
- * Despacha por extensión: `.pdf` (conversión con Python embebido), `.pptx` y
- * `.xlsx` (lectura directa del zip OOXML). El resultado se guarda siempre en
- * `~/.secti_addons/resultados.txt` a través de `ResultFileWriter`.
+ * Despacha por extensión: `.pdf` (conversión con Python embebido),
+ * `.pptx` y `.xlsx` (lectura directa del zip OOXML). El resultado se guarda
+ * siempre en `~/.secti_addons/resultados.txt` a través de `ResultFileWriter`.
  */
 
 /** Archivo de entrada indicado como primer argumento. */
@@ -36,6 +36,8 @@ if (extension === FORMAT_CONFIG.extensions.pdf) {
     outputDocx: path.join(os.tmpdir(), `lector_${Date.now()}.docx`),
     readTables,
   }).execute();
+} else if (extension === FORMAT_CONFIG.extensions.docx) {
+  await new DocxReaderBuilder({ inputFile, readTables }).execute();
 } else if (extension === FORMAT_CONFIG.extensions.pptx) {
   await new PptxReaderBuilder({ inputFile, readTables }).execute();
 } else if (extension === FORMAT_CONFIG.extensions.xlsx) {
